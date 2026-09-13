@@ -1,0 +1,23 @@
+{
+  "name": "@kirazul/zefron-api",
+  "version": "2.0.0",
+  "exports": "./main.ts",
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read --allow-write --allow-sys --allow-run=yt-dlp,ffmpeg main.ts",
+    "start:local": "bash scripts/start-postgres.sh && deno task start",
+    "dev": "deno run --watch --allow-net --allow-env --allow-read --allow-write --allow-sys --allow-run=yt-dlp,ffmpeg main.ts",
+    "deploy": "deno deploy"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "nodeModulesDir": "auto",
+  "deploy": {
+    "org": "kirazul",
+    "app": "zefron-api"
+  },
+  "imports": {
+    "@replit/connectors-sdk": "npm:@replit/connectors-sdk@^0.4.3",
+    "postgres": "npm:postgres@3.4.7"
+  }
+}

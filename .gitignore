@@ -1,0 +1,25 @@
+# Deno
+.deno/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# User-uploaded attachments may contain cookies or other credentials.
+attached_assets/*
+cookies.txt
+downloads/*
+
+# Editor
+.vscode/
+.idea/
+.kiro/

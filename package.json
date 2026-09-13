@@ -1,0 +1,15 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">   <img src=\"assets/ZefronLogo.png\" alt=\"Zefron API\" width=\"120\">   <h1>Zefron API</h1>   <p>Music API for YouTube Music, Lyrics & Streaming</p>   <p><a href=\"https://verome-api.deno.dev/\">Live</a></p> </div>",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "postgres": "^3.4.7"
+  }
+}
