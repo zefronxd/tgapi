@@ -1,4 +1,5 @@
 - [Deno runtime compatibility](deno-runtime-compatibility.md) — imported projects may need the installed Deno runtime aligned with the lockfile format before workflows can start.
+- [Deno Brotli compression](deno-brotli-compression.md) — use Node's built-in zlib Brotli encoder because Deno's native CompressionStream does not accept `br`.
 - [Audio source validation](audio-source-validation.md) — third-party media URLs can be IP-bound; validate sources server-side and keep provider fallback paths.
 - [FFmpeg subprocess environment](ffmpeg-subprocess-environment.md) — Deno child processes need a clean environment when workflow loader variables are injected.
 - [Telegram cache delivery](telegram-cache-delivery.md) — proxy cached Telegram audio through the API; never expose token-bearing file URLs publicly.

@@ -9,7 +9,7 @@
 
 import { YTMusic } from "./src/services/ytmusic.ts";
 import { YouTubeSearch } from "./src/services/youtube-search.ts";
-import { json, corsHeaders } from "./src/helpers/response.ts";
+import { compressResponse, json, corsHeaders } from "./src/helpers/response.ts";
 import { html as uiHtml } from "./ui.ts";
 
 // Routes
@@ -35,7 +35,7 @@ const youtubeSearch = new YouTubeSearch();
 
 // ─── Request Handler ────────────────────────────────────────
 
-async function handler(req: Request): Promise<Response> {
+async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const { pathname, searchParams } = url;
 
@@ -100,6 +100,10 @@ async function handler(req: Request): Promise<Response> {
     console.error("Request error:", err);
     return json({ error: "Internal server error" }, 500);
   }
+}
+
+async function handler(req: Request): Promise<Response> {
+  return compressResponse(req, await handleRequest(req));
 }
 
 // ─── Start Server ───────────────────────────────────────────

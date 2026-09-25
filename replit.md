@@ -20,6 +20,13 @@ PORT=5000 deno task dev
 
 The health endpoint is available at `/health`.
 
+## Response compression
+
+Text responses are compressed automatically based on the request's
+`Accept-Encoding` header. Brotli (`br`) is preferred, gzip is the fallback,
+and clients that support neither receive the normal uncompressed response.
+JSON and HTML are compressed; audio and image responses are left untouched.
+
 ## Telegram audio cache
 
 Set these values through Replit Secrets/environment variables rather than
