@@ -54,6 +54,10 @@ export const html = `<!DOCTYPE html>
     .name{font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .artist{font-size:.8rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dur{font-size:.75rem;color:var(--dim);font-family:monospace}
+     .result-actions{display:flex;align-items:center;gap:8px}
+     .result-download{border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:8px;padding:7px 9px;font:inherit;font-size:.78rem;cursor:pointer;transition:all .15s}
+     .result-download:hover{color:var(--accent);border-color:var(--accent)}
+     .result-download:disabled{opacity:.5;cursor:wait}
 
     .empty{padding:48px;text-align:center;color:var(--dim)}
     .loading{display:none;padding:48px;text-align:center;color:var(--accent)}
@@ -133,6 +137,8 @@ export const html = `<!DOCTYPE html>
         <div class="section-title">Streaming & Lyrics</div>
         <div class="api-list">
           <div class="api-item"><span class="method">GET</span><span class="path">/api/stream?id=</span><span class="desc">Audio stream URLs</span></div>
+           <div class="api-item"><span class="method">GET</span><span class="path">/api/download?id=&format=mp3</span><span class="desc">Download cached MP3 song</span></div>
+           <div class="api-item"><span class="method">GET</span><span class="path">/api/download/warm?id=</span><span class="desc">Prepare song download cache</span></div>
           <div class="api-item"><span class="method">GET</span><span class="path">/api/proxy?url=</span><span class="desc">Audio proxy (CORS)</span></div>
           <div class="api-item"><span class="method">GET</span><span class="path">/api/lyrics?title=&artist=</span><span class="desc">Synced lyrics (LRC)</span></div>
         </div>
@@ -334,8 +340,9 @@ function render(f,append){
     }else if(bid){
       click="viewArtist('"+bid+"','"+encodeURIComponent(thumb)+"','"+encodeURIComponent(s.title||'')+"')";
     }
-    var badge=type!=='song'&&type!=='video'?'<span style="font-size:.65rem;color:var(--accent);margin-left:8px;text-transform:uppercase">'+type+'</span>':'';
-     return '<div class="result'+(i===idx?' active':'')+'" onclick="'+click+'" onmouseenter="warmSong('+i+')" style="cursor:pointer"><img class="thumb" src="'+thumb+'"><div class="info"><div class="name">'+esc(s.title||s.name||'Unknown')+badge+'</div><div class="artist">'+esc(s.artists?.map(a=>a.name).join(', ')||s.subtitle||'')+'</div></div><div class="dur">'+(s.duration||'')+'</div></div>';
+     var badge=type!=='song'&&type!=='video'?'<span style="font-size:.65rem;color:var(--accent);margin-left:8px;text-transform:uppercase">'+type+'</span>':'';
+     var downloadAction=playable?'<button class="result-download" onclick="downloadSong(event,'+i+')" title="Download MP3" aria-label="Download MP3">↓</button>':'';
+      return '<div class="result'+(i===idx?' active':'')+'" onclick="'+click+'" onmouseenter="warmSong('+i+')" style="cursor:pointer"><img class="thumb" src="'+thumb+'"><div class="info"><div class="name">'+esc(s.title||s.name||'Unknown')+badge+'</div><div class="artist">'+esc(s.artists?.map(a=>a.name).join(', ')||s.subtitle||'')+'</div></div><div class="result-actions"><div class="dur">'+(s.duration||'')+'</div>'+downloadAction+'</div></div>';
   }).join('');
   if(append)el.innerHTML+=html;
    else{
@@ -351,6 +358,25 @@ function render(f,append){
    if(!s||!s.videoId||s.downloadWarmed)return;
    s.downloadWarmed=true;
     fetch('/api/download/warm?id='+encodeURIComponent(s.videoId)+'&format=mp3',{cache:'no-store'}).catch(function(){s.downloadWarmed=false});
+ }
+
+ function downloadSong(event,i){
+   event.stopPropagation();
+   var s=songs[i];
+   if(!s||!s.videoId)return;
+   var button=event.currentTarget;
+   button.disabled=true;
+   button.textContent='…';
+   var filename=(s.title||'audio')+' - '+(s.artists?.map(a=>a.name).join(', ')||'');
+   var url='/api/download?id='+encodeURIComponent(s.videoId)+'&format=mp3&direct=1&filename='+encodeURIComponent(filename);
+   var link=document.createElement('a');
+   link.href=url;
+   link.download='';
+   link.style.display='none';
+   document.body.appendChild(link);
+   link.click();
+   link.remove();
+   setTimeout(function(){button.disabled=false;button.textContent='↓'},1200);
  }
 
 function play(i){
