@@ -14,9 +14,12 @@ export async function findCookieFile(): Promise<string | null> {
   if (configured) {
     try {
       const stat = await Deno.stat(configured);
-      return stat.isFile ? configured : null;
+      if (stat.isFile && isNetscapeCookieFile(await Deno.readTextFile(configured))) {
+        return configured;
+      }
     } catch {
-      return null;
+      // If the configured path is stale or unreadable, continue with the
+      // project-root and uploaded-file fallbacks below.
     }
   }
 
