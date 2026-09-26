@@ -240,7 +240,7 @@ async function runYtDlp(args: string[], timeoutMs: number): Promise<Deno.Command
         return null;
       }
 
-      let timer: number | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         return await Promise.race([
           child.output(),
@@ -873,7 +873,7 @@ async function saveResponseToAudioFile(
         if (remainingBodyMs <= 0) {
           throw new Error("Audio source body timed out");
         }
-        let timeoutHandle: number | undefined;
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
         const chunk = await Promise.race([
           reader.read(),
           new Promise<never>((_, reject) => {
@@ -1326,7 +1326,7 @@ export async function transcodeToSmallMp3(
         // unhandled stream rejection behind.
         stderrPromise = new Response(child.stderr).text().catch(() => "");
         const statusPromise = child.status;
-        let timer: number | undefined;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         let timedOut = false;
         let status: Deno.CommandStatus | null = null;
 

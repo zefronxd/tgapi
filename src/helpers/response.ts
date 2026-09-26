@@ -118,8 +118,10 @@ export async function compressResponse(request: Request, response: Response): Pr
       const compressedBody = encode(body, encoding);
       headers.set("Content-Encoding", encoding);
       headers.delete("Content-Length");
+      const compressedBuffer = new ArrayBuffer(compressedBody.byteLength);
+      new Uint8Array(compressedBuffer).set(compressedBody);
 
-      return new Response(compressedBody, {
+      return new Response(compressedBuffer, {
         status: response.status,
         statusText: response.statusText,
         headers,
