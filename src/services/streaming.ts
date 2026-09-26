@@ -61,6 +61,15 @@ const MP3_PROVIDER_TIMEOUT_MS = Math.max(
   15_000,
   Number(Deno.env.get("MP3_PROVIDER_TIMEOUT_MS") || 45_000),
 );
+const YUKI_STREAM_BASE_URL = (
+  Deno.env.get("YUKI_STREAM_BASE_URL") ||
+  "https://music.yukiapi.site/stream"
+).replace(/\/+$/, "");
+const YUKI_API_KEY = Deno.env.get("YUKI_API_KEY") || "";
+const YUKI_PROVIDER_TIMEOUT_MS = Math.max(
+  10_000,
+  Number(Deno.env.get("YUKI_PROVIDER_TIMEOUT_MS") || 60_000),
+);
 const MP3_CACHE_ATTEMPTS = Math.max(
   1,
   Math.min(8, Number(Deno.env.get("MP3_CACHE_ATTEMPTS") || 5)),
@@ -719,10 +728,78 @@ export function getCachedFastAudio(videoId: string): PreparedAudioResult | null 
   return cached.result;
 }
 
-type ProviderAudioSource = {
+export type ProviderAudioSource = {
   response: Response;
   title: string;
 };
+
+/**
+ * Resolve audio through the configured Yuki stream endpoint.
+ * The API key is read only from the process environment and is never logged
+ * or returned to the browser.
+ */
+export async function fetchFromYukiApi(
+  videoId: string,
+  timeoutMs = YUKI_PROVIDER_TIMEOUT_MS,
+): Promise<ProviderAudioSource | null> {
+  if (!YUKI_API_KEY) return null;
+
+  const url = `${YUKI_STREAM_BASE_URL}/${encodeURIComponent(videoId)}?key=${
+    encodeURIComponent(YUKI_API_KEY)
+  }`;
+  try {
+    const response = await fetchAudioResponseWithHeaderTimeout(
+      url,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "audio/*,video/*,application/octet-stream,*/*",
+        },
+      },
+      Math.max(1, Math.min(YUKI_PROVIDER_TIMEOUT_MS, timeoutMs)),
+    );
+    if (!response.ok) {
+      await response.body?.cancel();
+      console.warn(JSON.stringify({
+        event: "audio_source",
+        state: "yuki_failed",
+        status: response.status,
+      }));
+      return null;
+    }
+
+    const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
+    if (
+      isClearlyNonAudioContentType(contentType) ||
+      contentType.includes("mpegurl") ||
+      contentType.includes("hls")
+    ) {
+      await response.body?.cancel();
+      console.warn(JSON.stringify({
+        event: "audio_source",
+        state: "yuki_rejected_non_audio",
+        contentType,
+      }));
+      return null;
+    }
+
+    console.log(JSON.stringify({
+      event: "audio_source",
+      state: "yuki_headers_received",
+      status: response.status,
+      contentType,
+      contentLength: response.headers.get("Content-Length") || "",
+    }));
+    return { response, title: "" };
+  } catch (err) {
+    console.warn(JSON.stringify({
+      event: "audio_source",
+      state: "yuki_failed",
+      error: String(err).slice(0, 180),
+    }));
+    return null;
+  }
+}
 
 async function fetchProviderAudioSource(
   provider: any,
@@ -1003,6 +1080,21 @@ async function prepareMp3FromProviders(
   }
 }
 
+async function prepareMp3FromYuki(
+  videoId: string,
+  timeoutMs: number,
+): Promise<PreparedAudioResult> {
+  const source = await fetchFromYukiApi(videoId, timeoutMs);
+  if (!source) {
+    return { success: false, error: "Yuki audio source unavailable" };
+  }
+  return await transcodeToSmallMp3(
+    source.response,
+    source.title,
+    FFMPEG_TIMEOUT_MS,
+  );
+}
+
 export function getCachedMp3Audio(videoId: string): PreparedAudioResult | null {
   const cached = mp3AudioCache.get(videoId);
   if (!cached) return null;
@@ -1043,7 +1135,20 @@ export function prepareMp3Audio(
 
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 0) return providerAudio;
-    const source = await prepareMp3Source(videoId, remainingMs);
+ 
+    const yukiAudio = await prepareMp3FromYuki(videoId, remainingMs);
+    if (yukiAudio.success) {
+      mp3AudioCache.set(videoId, {
+        expiresAt: Date.now() + FAST_AUDIO_CACHE_DURATION,
+        result: yukiAudio,
+      });
+      return yukiAudio;
+    }
+
+    const yukiRemainingMs = deadline - Date.now();
+    if (yukiRemainingMs <= 0) return yukiAudio;
+
+    const source = await prepareMp3Source(videoId, yukiRemainingMs);
     if (!source.success) return source;
 
     try {

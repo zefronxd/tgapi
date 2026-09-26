@@ -19,6 +19,7 @@ import {
   transcodeToSmallMp3,
   openPreparedAudio,
   fetchAudioResponseWithHeaderTimeout,
+  fetchFromYukiApi,
 } from "../services/streaming.ts";
 import { fetchFromInnerTube } from "../services/innertube.ts";
 import type { YTMusic } from "../services/ytmusic.ts";
@@ -374,6 +375,14 @@ async function findDownloadSource(
   const directDownload = await downloadWithYtDlp(id, Math.max(1, deadline - Date.now()));
   if (directDownload) {
     return { ...directDownload, deadline };
+  }
+
+  const yukiSource = await fetchFromYukiApi(
+    id,
+    Math.max(1, deadline - Date.now()),
+  );
+  if (yukiSource) {
+    return { ...yukiSource, deadline };
   }
 
   if (allowMp3Fallback && deadline > Date.now()) {

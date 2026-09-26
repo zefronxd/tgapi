@@ -51,6 +51,9 @@ committing them:
 - `MP3_CACHE_CONCURRENCY` — optional number of background cache workers; defaults to 6
 - `MP3_CACHE_QUEUE_LIMIT` — optional burst queue size for background cache jobs; defaults to 500
 - `FFMPEG_QUEUE_LIMIT` / `YTDLP_QUEUE_LIMIT` — optional media-worker queue sizes; defaults to 250 each
+- `YUKI_API_KEY` — optional secret key for the Yuki audio stream fallback
+- `YUKI_STREAM_BASE_URL` — optional Yuki stream endpoint base; defaults to `https://music.yukiapi.site/stream`
+- `YUKI_PROVIDER_TIMEOUT_MS` — optional Yuki response-header timeout; defaults to 60000ms
 
 The server uploads warmed audio to Telegram, stores its stable `file_id` and
 `message_id` with the YouTube video ID in PostgreSQL (`audio_cache`), and
