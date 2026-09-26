@@ -505,6 +505,37 @@ function audioContentType(path: string): string {
   return "audio/mp4";
 }
 
+function isClearlyNonAudioContentType(contentType: string): boolean {
+  const normalized = contentType.toLowerCase();
+  return normalized.startsWith("text/") ||
+    normalized.includes("html") ||
+    normalized.includes("json") ||
+    normalized.includes("xml");
+}
+
+async function looksLikeNonAudioFile(filePath: string): Promise<boolean> {
+  let file: Deno.FsFile | null = null;
+  try {
+    file = await Deno.open(filePath, { read: true });
+    const probe = new Uint8Array(512);
+    const bytesRead = await file.read(probe);
+    if (!bytesRead) return true;
+
+    const sample = new TextDecoder().decode(probe.subarray(0, bytesRead)).trimStart().toLowerCase();
+    return sample.startsWith("<!doctype html") ||
+      sample.startsWith("<html") ||
+      sample.startsWith("<head") ||
+      sample.startsWith("<body") ||
+      sample.startsWith("{\"error") ||
+      sample.startsWith("{\"message");
+  } catch {
+    // Let FFmpeg perform the final validation when the probe is unavailable.
+    return false;
+  } finally {
+    file?.close();
+  }
+}
+
 async function cachedYtDlpAudio(videoId: string): Promise<{ response: Response; title: string } | null> {
   const safeId = videoId.replace(/[^A-Za-z0-9_-]/g, "");
   if (!safeId) return null;
@@ -772,6 +803,10 @@ async function fetchProviderAudioSource(
         await response.body?.cancel();
         throw new Error("Provider returned an HLS playlist");
       }
+      if (isClearlyNonAudioContentType(contentType)) {
+        await response.body?.cancel();
+        throw new Error(`Provider returned non-audio content type: ${contentType}`);
+      }
       console.log(JSON.stringify({
         event: "audio_source",
         state: "headers_received",
@@ -878,6 +913,17 @@ async function saveResponseToAudioFile(
     if (info.size > maxBytes) {
       await removeTempFile(filePath);
       return { success: false, error: "Audio source is unexpectedly large" };
+    }
+    if (isClearlyNonAudioContentType(contentType) || await looksLikeNonAudioFile(filePath)) {
+      console.warn(JSON.stringify({
+        event: "audio_source",
+        state: "rejected_non_audio",
+        title,
+        contentType,
+        size: info.size,
+      }));
+      await removeTempFile(filePath);
+      return { success: false, error: "Audio source was not a media file" };
     }
     console.log(JSON.stringify({
       event: "audio_source",
